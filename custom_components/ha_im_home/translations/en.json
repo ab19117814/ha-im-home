@@ -1,0 +1,57 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "HA Im Home — Settings",
+        "data": {
+          "unlock_cooldown": "Presence cooldown (seconds)"
+        }
+      },
+      "first_user": {
+        "title": "HA Im Home — First user",
+        "description": "Enter a name and secret (min 16 chars). Paste the same secret in the iOS app → Settings → Secret.",
+        "data": {
+          "name":   "Username",
+          "secret": "Shared secret"
+        }
+      }
+    },
+    "error": {
+      "secret_too_short": "Secret must be at least 16 characters"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "HA Im Home — Manage"
+      },
+      "edit_settings": {
+        "title": "Settings",
+        "description": "Users: {users}",
+        "data": {
+          "unlock_cooldown": "Presence cooldown (seconds)"
+        }
+      },
+      "add_user": {
+        "title": "Add user",
+        "data": {
+          "name":   "Name",
+          "secret": "Shared secret"
+        }
+      },
+      "remove_user": {
+        "title": "Remove user",
+        "data": {
+          "name": "Select user"
+        }
+      }
+    },
+    "error": {
+      "secret_too_short": "Secret too short (min 16 characters)",
+      "user_exists":      "A user with this name already exists"
+    },
+    "abort": {
+      "no_users": "No users to remove"
+    }
+  }
+}
