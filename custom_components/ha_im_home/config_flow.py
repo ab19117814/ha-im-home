@@ -9,10 +9,12 @@ from homeassistant.core import callback
 from homeassistant.helpers import selector
 
 from .const import (
+    CONF_SERVICE_UUID,
     CONF_UNLOCK_COOLDOWN,
     CONF_USER_NAME,
     CONF_USER_SECRET,
     CONF_USERS,
+    CONF_WRITE_UUID,
     DEFAULT_UNLOCK_COOLDOWN,
     DOMAIN,
     MENU_ADD_USER,
@@ -98,14 +100,23 @@ class ImHomeOptionsFlow(config_entries.OptionsFlow):
             return self.async_create_entry(data={
                 **self._entry.options,
                 CONF_UNLOCK_COOLDOWN: int(user_input[CONF_UNLOCK_COOLDOWN]),
+                CONF_SERVICE_UUID:    user_input.get(CONF_SERVICE_UUID, "").strip(),
+                CONF_WRITE_UUID:      user_input.get(CONF_WRITE_UUID, "").strip(),
             })
 
         cur = self._entry.options
+        # Pre-fill from options; fall back to entry.data (auto-registered by Mac daemon)
+        default_service = cur.get(CONF_SERVICE_UUID) or self._entry.data.get(CONF_SERVICE_UUID, "")
+        default_write   = cur.get(CONF_WRITE_UUID)   or self._entry.data.get(CONF_WRITE_UUID, "")
         users_str = ", ".join(u[CONF_USER_NAME] for u in self._users) or "none"
         schema = vol.Schema({
             vol.Required(CONF_UNLOCK_COOLDOWN, default=cur.get(CONF_UNLOCK_COOLDOWN, DEFAULT_UNLOCK_COOLDOWN)):
                 selector.selector({"number": {"min": 10, "max": 600, "step": 5,
                                               "unit_of_measurement": "s", "mode": "slider"}}),
+            vol.Optional(CONF_SERVICE_UUID, default=default_service):
+                selector.selector({"text": {}}),
+            vol.Optional(CONF_WRITE_UUID, default=default_write):
+                selector.selector({"text": {}}),
         })
         return self.async_show_form(
             step_id=MENU_EDIT_SETTINGS,

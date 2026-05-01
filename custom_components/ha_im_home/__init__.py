@@ -10,8 +10,10 @@ from homeassistant.helpers.event import async_call_later
 from aiohttp import web
 
 from .const import (
+    CONF_SERVICE_UUID,
     CONF_UNLOCK_COOLDOWN,
     CONF_USERS,
+    CONF_WRITE_UUID,
     DEFAULT_UNLOCK_COOLDOWN,
     DOMAIN,
 )
@@ -131,15 +133,18 @@ class ImHomeConfigView(HomeAssistantView):
             {"name": u["name"], "secret": u["secret"]}
             for u in entry.options.get(CONF_USERS, [])
         ]
-        # Include BLE UUIDs so iOS can discover the correct Mac
+        # Priority: RAM (Mac just registered) → options (manually set in UI) → data (auto-registered last session)
         domain_data = self._hass.data.get(DOMAIN, {})
         service_uuid = None
         write_uuid   = None
         for entry_data in domain_data.values():
-            service_uuid = entry_data.get("service_uuid")
-            write_uuid   = entry_data.get("write_uuid")
+            service_uuid = entry_data.get(CONF_SERVICE_UUID)
+            write_uuid   = entry_data.get(CONF_WRITE_UUID)
             if service_uuid:
                 break
+        if not service_uuid:
+            service_uuid = entry.options.get(CONF_SERVICE_UUID) or entry.data.get(CONF_SERVICE_UUID)
+            write_uuid   = entry.options.get(CONF_WRITE_UUID)   or entry.data.get(CONF_WRITE_UUID)
 
         return web.json_response({
             "users":        users,
@@ -171,9 +176,18 @@ class ImHomeRegisterView(HomeAssistantView):
 
         domain_data = self._hass.data.get(DOMAIN, {})
         for entry_data in domain_data.values():
-            entry_data["service_uuid"] = service_uuid
+            entry_data[CONF_SERVICE_UUID] = service_uuid
             if write_uuid:
-                entry_data["write_uuid"] = write_uuid
+                entry_data[CONF_WRITE_UUID] = write_uuid
+
+        # Persist so config endpoint can serve UUIDs after HA restarts (before Mac re-registers)
+        entries = self._hass.config_entries.async_entries(DOMAIN)
+        if entries:
+            entry = entries[0]
+            self._hass.config_entries.async_update_entry(
+                entry,
+                data={**entry.data, CONF_SERVICE_UUID: service_uuid, CONF_WRITE_UUID: write_uuid},
+            )
 
         _LOGGER.info("HA Im Home: Mac registered service_uuid=%s write_uuid=%s", service_uuid, write_uuid)
         return web.Response(text="ok")

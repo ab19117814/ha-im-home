@@ -5,6 +5,8 @@ CONF_UNLOCK_COOLDOWN = "unlock_cooldown"
 CONF_USERS           = "users"
 CONF_USER_NAME       = "name"
 CONF_USER_SECRET     = "secret"
+CONF_SERVICE_UUID    = "service_uuid"
+CONF_WRITE_UUID      = "write_uuid"
 
 DEFAULT_UNLOCK_COOLDOWN = 60
 

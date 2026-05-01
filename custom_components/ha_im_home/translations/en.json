@@ -29,7 +29,9 @@
         "title": "Settings",
         "description": "Users: {users}",
         "data": {
-          "unlock_cooldown": "Presence cooldown (seconds)"
+          "unlock_cooldown": "Presence cooldown (seconds)",
+          "service_uuid":    "BLE Service UUID (auto-filled by Mac daemon)",
+          "write_uuid":      "BLE Write characteristic UUID (auto-filled by Mac daemon)"
         }
       },
       "add_user": {
