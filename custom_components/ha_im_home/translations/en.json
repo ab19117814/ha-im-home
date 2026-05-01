@@ -1,0 +1,63 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "HA Im Home — Settings",
+        "data": {
+          "unlock_cooldown": "Presence cooldown (seconds)"
+        }
+      },
+      "first_user": {
+        "title": "HA Im Home — First user",
+        "description": "Link a Home Assistant user to the integration. The iOS app must use that user's token.",
+        "data": {
+          "ha_user_id": "Home Assistant user",
+          "name":       "Display name",
+          "secret":     "Shared secret (min 16 chars)"
+        }
+      }
+    },
+    "error": {
+      "secret_too_short": "Secret must be at least 16 characters"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "HA Im Home — Manage"
+      },
+      "edit_settings": {
+        "title": "Settings",
+        "description": "Users: {users}",
+        "data": {
+          "unlock_cooldown": "Presence cooldown (seconds)",
+          "service_uuid":    "BLE Service UUID (auto-filled by Mac daemon)",
+          "write_uuid":      "BLE Write characteristic UUID (auto-filled by Mac daemon)"
+        }
+      },
+      "add_user": {
+        "title": "Add user",
+        "description": "Link a Home Assistant user. The iOS app must authenticate with that user's token.",
+        "data": {
+          "ha_user_id": "Home Assistant user",
+          "name":       "Display name",
+          "secret":     "Shared secret (min 16 chars)"
+        }
+      },
+      "remove_user": {
+        "title": "Remove user",
+        "data": {
+          "name": "Select user"
+        }
+      }
+    },
+    "error": {
+      "secret_too_short":      "Secret too short (min 16 characters)",
+      "user_exists":           "A user with this name already exists",
+      "ha_user_already_linked": "This HA user is already linked to another integration user"
+    },
+    "abort": {
+      "no_users": "No users to remove"
+    }
+  }
+}
