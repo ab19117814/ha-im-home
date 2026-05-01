@@ -10,6 +10,7 @@ from homeassistant.helpers.event import async_call_later
 from aiohttp import web
 
 from .const import (
+    CONF_HA_USER_ID,
     CONF_SERVICE_UUID,
     CONF_UNLOCK_COOLDOWN,
     CONF_USERS,
@@ -22,7 +23,6 @@ _LOGGER = logging.getLogger(__name__)
 
 PLATFORMS = ["binary_sensor"]
 
-# Fixed URLs — Mac config only needs ha_url, nothing else changes
 _ARRIVED_URL  = "/api/ha_im_home/arrived"
 _CONFIG_URL   = "/api/ha_im_home/config"
 _REGISTER_URL = "/api/ha_im_home/register"
@@ -71,7 +71,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         store["detected_users"][user_name] = cancel
         _LOGGER.info("HA Im Home: user '%s' detected via Mac webhook", user_name)
 
-    # Store callback so UnlockView can call it
     hass.data[DOMAIN][entry.entry_id]["on_detected"] = _on_user_detected
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
@@ -85,7 +84,7 @@ class ImHomeUnlockView(HomeAssistantView):
 
     url  = _ARRIVED_URL
     name = "ha_im_home:arrived"
-    requires_auth = True  # Mac sends Bearer HA token
+    requires_auth = True
 
     def __init__(self, hass: HomeAssistant) -> None:
         self._hass = hass
@@ -102,7 +101,6 @@ class ImHomeUnlockView(HomeAssistantView):
 
         _LOGGER.info("HA Im Home: user '%s' arrived (ip=%s)", user_name, request.remote)
 
-        # Call on_detected for every active entry
         domain_data = self._hass.data.get(DOMAIN, {})
         for entry_data in domain_data.values():
             on_detected = entry_data.get("on_detected")
@@ -113,27 +111,38 @@ class ImHomeUnlockView(HomeAssistantView):
 
 
 class ImHomeConfigView(HomeAssistantView):
-    """GET /api/ha_im_home/config — returns users+secrets for Mac daemon."""
+    """GET /api/ha_im_home/config — returns config for the authenticated HA user."""
 
     url  = _CONFIG_URL
     name = "ha_im_home:config"
-    requires_auth = True  # Mac sends Bearer HA token
+    requires_auth = True
 
     def __init__(self, hass: HomeAssistant) -> None:
         self._hass = hass
 
     async def get(self, request: web.Request) -> web.Response:
-        # Find first active ha_im_home entry
         entries = self._hass.config_entries.async_entries(DOMAIN)
         if not entries:
             return web.Response(status=404, text="no ha_im_home entry")
 
         entry = entries[0]
-        users = [
-            {"name": u["name"], "secret": u["secret"]}
-            for u in entry.options.get(CONF_USERS, [])
-        ]
-        # Priority: RAM (Mac just registered) → options (manually set in UI) → data (auto-registered last session)
+        ha_user_id = request.user.id if request.user else None
+
+        # Find the integration user linked to this HA user
+        all_users = entry.options.get(CONF_USERS, [])
+        matched = next(
+            (u for u in all_users if u.get(CONF_HA_USER_ID) == ha_user_id),
+            None,
+        )
+        if matched is None:
+            # Fallback: legacy entries without ha_user_id — return first user
+            matched = next((u for u in all_users if CONF_HA_USER_ID not in u), None)
+
+        if matched is None:
+            _LOGGER.warning("HA Im Home: no user linked to HA user %s", ha_user_id)
+            return web.Response(status=403, text="no integration user linked to your HA account")
+
+        # Priority: RAM → options → data
         domain_data = self._hass.data.get(DOMAIN, {})
         service_uuid = None
         write_uuid   = None
@@ -147,14 +156,14 @@ class ImHomeConfigView(HomeAssistantView):
             write_uuid   = entry.options.get(CONF_WRITE_UUID)   or entry.data.get(CONF_WRITE_UUID)
 
         return web.json_response({
-            "users":        users,
+            "users":        [{"name": matched["name"], "secret": matched["secret"]}],
             "service_uuid": service_uuid,
             "write_uuid":   write_uuid,
         })
 
 
 class ImHomeRegisterView(HomeAssistantView):
-    """POST /api/ha_im_home/register — Mac daemon registers its BLE service UUID on startup."""
+    """POST /api/ha_im_home/register — Mac daemon registers its BLE UUIDs on startup."""
 
     url  = _REGISTER_URL
     name = "ha_im_home:register"
@@ -180,7 +189,6 @@ class ImHomeRegisterView(HomeAssistantView):
             if write_uuid:
                 entry_data[CONF_WRITE_UUID] = write_uuid
 
-        # Persist so config endpoint can serve UUIDs after HA restarts (before Mac re-registers)
         entries = self._hass.config_entries.async_entries(DOMAIN)
         if entries:
             entry = entries[0]

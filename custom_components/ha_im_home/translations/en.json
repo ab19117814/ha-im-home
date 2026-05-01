@@ -9,10 +9,11 @@
       },
       "first_user": {
         "title": "HA Im Home — First user",
-        "description": "Enter a name and secret (min 16 chars). Paste the same secret in the iOS app → Settings → Secret.",
+        "description": "Link a Home Assistant user to the integration. The iOS app must use that user's token.",
         "data": {
-          "name":   "Username",
-          "secret": "Shared secret"
+          "ha_user_id": "Home Assistant user",
+          "name":       "Display name",
+          "secret":     "Shared secret (min 16 chars)"
         }
       }
     },
@@ -36,9 +37,11 @@
       },
       "add_user": {
         "title": "Add user",
+        "description": "Link a Home Assistant user. The iOS app must authenticate with that user's token.",
         "data": {
-          "name":   "Name",
-          "secret": "Shared secret"
+          "ha_user_id": "Home Assistant user",
+          "name":       "Display name",
+          "secret":     "Shared secret (min 16 chars)"
         }
       },
       "remove_user": {
@@ -49,8 +52,9 @@
       }
     },
     "error": {
-      "secret_too_short": "Secret too short (min 16 characters)",
-      "user_exists":      "A user with this name already exists"
+      "secret_too_short":      "Secret too short (min 16 characters)",
+      "user_exists":           "A user with this name already exists",
+      "ha_user_already_linked": "This HA user is already linked to another integration user"
     },
     "abort": {
       "no_users": "No users to remove"

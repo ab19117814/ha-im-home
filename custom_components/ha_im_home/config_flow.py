@@ -9,6 +9,7 @@ from homeassistant.core import callback
 from homeassistant.helpers import selector
 
 from .const import (
+    CONF_HA_USER_ID,
     CONF_SERVICE_UUID,
     CONF_UNLOCK_COOLDOWN,
     CONF_USER_NAME,
@@ -23,6 +24,16 @@ from .const import (
 )
 
 _LOGGER = logging.getLogger(__name__)
+
+
+async def _ha_user_options(hass) -> list[selector.SelectOptionDict]:
+    """Return list of non-system HA users for selector."""
+    users = await hass.auth.async_get_users()
+    return [
+        selector.SelectOptionDict(value=u.id, label=u.name or u.id)
+        for u in users
+        if not u.system_generated and u.is_active
+    ]
 
 
 class ImHomeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -49,6 +60,8 @@ class ImHomeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_first_user(self, user_input=None):
         """Step 2 — first user."""
         errors = {}
+        ha_users = await _ha_user_options(self.hass)
+
         if user_input is not None:
             if len(user_input[CONF_USER_SECRET]) < 16:
                 errors[CONF_USER_SECRET] = "secret_too_short"
@@ -56,6 +69,7 @@ class ImHomeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 self._options[CONF_USERS] = [{
                     CONF_USER_NAME:   user_input[CONF_USER_NAME].strip(),
                     CONF_USER_SECRET: user_input[CONF_USER_SECRET].strip(),
+                    CONF_HA_USER_ID:  user_input[CONF_HA_USER_ID],
                 }]
                 return self.async_create_entry(
                     title="HA Im Home",
@@ -64,6 +78,9 @@ class ImHomeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 )
 
         schema = vol.Schema({
+            vol.Required(CONF_HA_USER_ID): selector.selector(
+                {"select": {"options": ha_users}}
+            ),
             vol.Required(CONF_USER_NAME):   selector.selector({"text": {}}),
             vol.Required(CONF_USER_SECRET): selector.selector({"text": {"type": "password"}}),
         })
@@ -89,7 +106,7 @@ class ImHomeOptionsFlow(config_entries.OptionsFlow):
         return self.async_show_menu(
             step_id="init",
             menu_options={
-                MENU_EDIT_SETTINGS: "Settings (cooldown)",
+                MENU_EDIT_SETTINGS: "Settings",
                 MENU_ADD_USER:      "Add user",
                 MENU_REMOVE_USER:   "Remove user",
             },
@@ -105,7 +122,6 @@ class ImHomeOptionsFlow(config_entries.OptionsFlow):
             })
 
         cur = self._entry.options
-        # Pre-fill from options; fall back to entry.data (auto-registered by Mac daemon)
         default_service = cur.get(CONF_SERVICE_UUID) or self._entry.data.get(CONF_SERVICE_UUID, "")
         default_write   = cur.get(CONF_WRITE_UUID)   or self._entry.data.get(CONF_WRITE_UUID, "")
         users_str = ", ".join(u[CONF_USER_NAME] for u in self._users) or "none"
@@ -126,21 +142,33 @@ class ImHomeOptionsFlow(config_entries.OptionsFlow):
 
     async def async_step_add_user(self, user_input=None):
         errors = {}
+        ha_users = await _ha_user_options(self.hass)
+
         if user_input is not None:
             name   = user_input[CONF_USER_NAME].strip()
             secret = user_input[CONF_USER_SECRET].strip()
+            ha_uid = user_input[CONF_HA_USER_ID]
             if any(u[CONF_USER_NAME] == name for u in self._users):
                 errors[CONF_USER_NAME] = "user_exists"
+            elif any(u.get(CONF_HA_USER_ID) == ha_uid for u in self._users):
+                errors[CONF_HA_USER_ID] = "ha_user_already_linked"
             elif len(secret) < 16:
                 errors[CONF_USER_SECRET] = "secret_too_short"
             else:
-                self._users.append({CONF_USER_NAME: name, CONF_USER_SECRET: secret})
+                self._users.append({
+                    CONF_USER_NAME:   name,
+                    CONF_USER_SECRET: secret,
+                    CONF_HA_USER_ID:  ha_uid,
+                })
                 return self.async_create_entry(data={
                     **self._entry.options,
                     CONF_USERS: self._users,
                 })
 
         schema = vol.Schema({
+            vol.Required(CONF_HA_USER_ID): selector.selector(
+                {"select": {"options": ha_users}}
+            ),
             vol.Required(CONF_USER_NAME):   selector.selector({"text": {}}),
             vol.Required(CONF_USER_SECRET): selector.selector({"text": {"type": "password"}}),
         })
@@ -151,7 +179,6 @@ class ImHomeOptionsFlow(config_entries.OptionsFlow):
             return self.async_abort(reason="no_users")
         if user_input is not None:
             selected = user_input.get(CONF_USER_NAME)
-            # HA select selector may return plain str, {"value": "..."} or single-item list.
             if isinstance(selected, dict):
                 selected = selected.get("value") or selected.get("label")
             elif isinstance(selected, list):

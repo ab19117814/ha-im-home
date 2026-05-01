@@ -7,6 +7,7 @@ CONF_USER_NAME       = "name"
 CONF_USER_SECRET     = "secret"
 CONF_SERVICE_UUID    = "service_uuid"
 CONF_WRITE_UUID      = "write_uuid"
+CONF_HA_USER_ID      = "ha_user_id"
 
 DEFAULT_UNLOCK_COOLDOWN = 60
 
