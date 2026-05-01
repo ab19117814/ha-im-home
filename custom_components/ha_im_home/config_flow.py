@@ -26,11 +26,11 @@ from .const import (
 _LOGGER = logging.getLogger(__name__)
 
 
-async def _ha_user_options(hass) -> list[selector.SelectOptionDict]:
+async def _ha_user_options(hass) -> list[dict]:
     """Return list of non-system HA users for selector."""
     users = await hass.auth.async_get_users()
     return [
-        selector.SelectOptionDict(value=u.id, label=u.name or u.id)
+        {"value": u.id, "label": u.name or u.id}
         for u in users
         if not u.system_generated and u.is_active
     ]

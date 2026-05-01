@@ -1,7 +1,7 @@
 {
   "domain": "ha_im_home",
   "name": "HA Im Home",
-  "version": "2.2.0",
+  "version": "2.2.1",
   "documentation": "https://github.com/ab19117814/ha-im-home",
   "dependencies": [],
   "codeowners": ["@ab19117814"],
