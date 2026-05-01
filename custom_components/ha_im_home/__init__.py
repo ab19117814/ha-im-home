@@ -126,7 +126,7 @@ class ImHomeConfigView(HomeAssistantView):
             return web.Response(status=404, text="no ha_im_home entry")
 
         entry = entries[0]
-        ha_user_id = request.user.id if request.user else None
+        ha_user = request.get("hass_user"); ha_user_id = ha_user.id if ha_user else None
 
         # Find the integration user linked to this HA user
         all_users = entry.options.get(CONF_USERS, [])
